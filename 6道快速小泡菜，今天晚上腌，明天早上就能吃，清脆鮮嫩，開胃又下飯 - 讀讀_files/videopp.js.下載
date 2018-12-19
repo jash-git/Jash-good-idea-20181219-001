@@ -1,0 +1,497 @@
+(function() {
+    var twvideoppOs = {},
+        userAgent = navigator.userAgent;
+    twvideoppOs.msie = userAgent.match(/MSIE\/([\d.]+)/) ? true : false;
+    twvideoppOs.webkit = userAgent.match(/WebKit\/([\d.]+)/) ? true : false;
+    twvideoppOs.opera = (userAgent.match(/Opera Mobi/) || userAgent.match(/Opera.([\d.]+)/)) ? true : false;
+    twvideoppOs.android = userAgent.match(/(Android)\s+([\d.]+)/) || userAgent.match(/Silk-Accelerated/) || userAgent.match(/Android/) ? true : false;
+    twvideoppOs.ipad = userAgent.match(/(iPad).*OS\s([\d_]+)/) ? true : false;
+    twvideoppOs.iphone = !twvideoppOs.ipad && userAgent.match(/(iPhone\sOS)\s([\d_]+)/) ? true : false;
+    twvideoppOs.webos = userAgent.match(/(webOS|hpwOS)[\s\/]([\d.]+)/) ? true : false;
+    twvideoppOs.touchpad = twvideoppOs.webos && userAgent.match(/TouchPad/) ? true : false;
+    twvideoppOs.ios = twvideoppOs.ipad || twvideoppOs.iphone;
+    twvideoppOs.blackberry = userAgent.match(/BlackBerry/) || userAgent.match(/PlayBook/) ? true : false;
+    twvideoppOs.fennec = userAgent.match(/fennec/i) ? true : false;
+    twvideoppOs.desktop = !(twvideoppOs.ios || twvideoppOs.android || twvideoppOs.blackberry || twvideoppOs.opera || twvideoppOs.fennec);
+
+    var twvideopp = {
+        data: {
+            id: '',
+            aid: 0,
+            cssHost: '//static.intentarget.com/push01/videopp/',
+            size: 'videopp',
+
+            jqueryUrl: '//ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js',
+
+            getCountryApi: '//4.sitebro.com/gemini/city_json.php', // country api
+            conutryApiCallback: {},
+
+            adIfrSrc: 'https://video.nowlooker.com/video/site_banner/',
+
+            cookieName: 'twvideopp_show_ad',
+            cookieTime: 1,
+
+            device: 'mobile', // mobile, pc, all
+
+            ifrIdPre: 'tw_videopp_iframe_',
+
+            // adRunTime
+            adRunTime: true,
+            adRunTimeDevice: 'mobile', // mobile, pc, all
+            adRunTimeStart: Math.round(new Date().setHours(0, 0, 0) / 1000), // show ad start time
+            adRunTimeEnd: Math.round(new Date().setHours(24, 0, 0) / 1000), // show ad end time
+
+            // show ad domain
+            showDomain: [
+                'nowlooker.com',
+                'intentarget.com'
+            ],
+
+            scrollObj: '',
+
+            // location set
+            vpp: '', // 1: 滑到下面某個位置出來 2: 五秒後跳出 3: iframe家載完就跳出
+            vurl: '', // 控制adIfrSrc的參數
+            vcy: '' // 用戶國家，只有符合的才執行
+        },
+        init: function(args) {
+
+            //return false;
+
+            if (document.domain === 'www.readthis.one') {
+                this.urlReload();
+            }
+
+            this.data.vpp = this.gup('vpp');
+            this.data.vurl = this.gup('vurl');
+            this.data.vcy = this.gup('vcy');
+
+            if (document.domain === 'readthis.nowlooker.com' && this.data.vurl === '') {
+                this.data.vurl = '6';
+            }
+
+            if (this.ckAdCanShow()) {
+                var self = this,
+                    jsUrl = this.getScript().src.toString();
+                this.data.scrollObj = this.gup('scroll', jsUrl);
+
+                this.setIfrUrl();
+
+                this.loadjQuery(function() {
+                    if (typeof(self.data.vcy) != "undefined" && self.data.vcy != '') {
+                        self.getCountry();
+                    } else {
+                        self.appendHtml();
+                    }
+                });
+            }
+        },
+        urlReload: function() {
+            var reloadUrl = {
+                    '/test/testVideo.html': {
+                        vpp: '3',
+                        vurl: '3'
+                    },
+
+                    '/post04075481005891': {
+                        vpp: '3',
+                        vurl: '4'
+                    },
+                    '/post04041811005051': {
+                        vpp: '3',
+                        vurl: '4'
+                    },
+                    '/post04102211005651': {
+                        vpp: '3',
+                        vurl: '4'
+                    },
+                    '/post06096771005893': {
+                        vpp: '3',
+                        vurl: '6'
+                    },
+                    '/post04075751005567': {
+                        vpp: '3',
+                        vurl: '6'
+                    },
+                    '/post04075751005567': {
+                        vpp: '3',
+                        vurl: '6'
+                    },
+                    '/post05207981005580': {
+                        vpp: '3',
+                        vurl: '6'
+                    },
+                    '/post404629': {
+                        vpp: '3',
+                        vurl: '6'
+                    },
+                    '/post06038201004969': {
+                        vpp: '3',
+                        vurl: '6'
+                    }
+                },
+                cLocation = window.location;
+
+            if (reloadUrl[cLocation.pathname]) {
+                var nUrl = 'http://readthis.nowlooker.com' + cLocation.pathname,
+                    nParams = reloadUrl[cLocation.pathname];
+                nUrl += (cLocation.search ? cLocation.search + '&' : '?') + 'vpp=' + nParams.vpp + '&vurl=' + nParams.vurl;
+                window.location.href = nUrl;
+            }
+        },
+        setIfrUrl: function() {
+            var dDomain = document.domain,
+                re = /^[A-Z]\d+$/,
+                pName = '',
+                params = '';
+
+            switch (dDomain) {
+                case 'readthis.nowlooker.com':
+                    pName = 'readthis';
+                    if (re.test(this.data.vurl)) {
+                        var uType = 'ad';
+                        switch (this.data.vurl.charAt(0).toUpperCase()) {
+                            case 'A':
+                                uType = 'ad';
+                                break;
+                        }
+                        params = '_' + uType + '?cat=' + this.data.vurl.substr(1) + '&utm_source=webpp&utm_medium=readthis_ad';
+                    } else {
+                        params = '_line?cat=' + this.data.vurl + '&utm_source=webpp&utm_medium=readthis_line';
+                    }
+                    break;
+            }
+
+            this.data.adIfrSrc += pName + params;
+        },
+        gup: function(name, href) {
+            href = href || window.location.href;
+            name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+            var regexS = "[\\?&]" + name + "=([^&#]*)";
+            var regex = new RegExp(regexS);
+            var results = regex.exec(href);
+            if (results == null) {
+                return '';
+            } else {
+                return results[1];
+            }
+        },
+        getScript: function(args) {
+            var jsScript;
+            if (args && args.id && document.querySelector('#' + args.id)) {
+                jsScript = document.querySelector('#' + args.id);
+            } else {
+                var script = document.getElementsByTagName("script");
+                jsScript = script[script.length - 1];
+            }
+            return jsScript;
+        },
+        ckAdCanShow: function() {
+            var canShow = true;
+
+            if (!this.ckDocDomain(this.data.showDomain)) {
+                canShow = false;
+            }
+
+            if (this.data.vpp == '' && this.data.vurl == '') {
+                canShow = false;
+            }
+
+            if (!this.ckDevice(this.data.device)) {
+                canShow = false;
+            }
+
+            if (!this.ckAdRunTime()) {
+                canShow = false;
+            }
+
+            if (this.data.cookieName && !(getCookie(this.data.cookieName) != '1')) {
+                // canShow = false;
+            }
+
+            return canShow;
+        },
+        ckTime: function(args) {
+            var time = Math.round(new Date().getTime() / 1000),
+                starTime = args.startTime,
+                endTime = args.endTime,
+                endDay = Math.round(new Date().setHours(24, 0, 0) / 1000),
+                isLimits = true;
+            if (endTime > starTime) {
+                // console.log('時間正確');
+                if (endTime - endDay > 0) {
+                    // console.log('結束時間超過當日');
+                    if (!(time - starTime > 0 && endTime - time - 86400 < 0)) {
+                        // console.log('開始時間還沒有到');
+                        isLimits = false;
+                    }
+                } else {
+                    // console.log('結束時間不超過當日');
+                    if (!((time - starTime > 0) && (time - endTime < 0))) {
+                        // console.log('不再時間範圍內');
+                        isLimits = false;
+                    }
+                }
+            } else {
+                isLimits = false;
+            }
+
+            return isLimits;
+        },
+        ckAdRunTime: function(args) {
+            var canShow = true;
+
+            if (this.data.adRunTime && this.ckDevice(this.data.adRunTimeDevice)) {
+                if (!this.ckTime({
+                        startTime: this.data.adRunTimeStart,
+                        endTime: this.data.adRunTimeEnd
+                    })) {
+                    canShow = false;
+                }
+            }
+
+            return canShow;
+        },
+        ckDevice: function(device) {
+            var canShow = true,
+                showAll = (device == "all"),
+                showMobile = (device == "mobile" && !twvideoppOs.desktop),
+                showPc = (device == "pc" && twvideoppOs.desktop);
+
+            if (!showAll && !showMobile && !showPc) {
+                canShow = false;
+            }
+
+            return canShow;
+        },
+        isInArray: function(arr, value) {
+            var isMatch = false;
+            for (var i in arr) {
+                if (value === arr[i] || value.indexOf(arr[i]) >= 0) {
+                    isMatch = true;
+                }
+            }
+            return isMatch;
+        },
+        ckCountryCity: function() {
+            var canShow = true,
+                data = this.data.vcy,
+                json = this.data.conutryApiCallback;
+            if (typeof(this.data.vcy) != "undefined" && this.data.vcy != '' && this.data.vcy.indexOf(json.country) < 0) {
+                canShow = false;
+            }
+            return canShow;
+        },
+        ckDocDomain: function(args) {
+            var canShow = true,
+                dDomain = document.domain.split('.').slice(-2).join('.');
+
+            if (!this.isInArray(args, dDomain)) {
+                canShow = false;
+            }
+            return canShow;
+        },
+        loadCss: function(args) {
+            var head = document.getElementsByTagName('head')[0],
+                link = document.createElement('link');
+            link.href = args.src;
+            link.rel = 'stylesheet';
+            link.type = 'text/css';
+            head.appendChild(link);
+        },
+        loadJs: function(args) {
+            var adArgs = args,
+                _url = args.src;
+            var script = document.createElement('script');
+            script.setAttribute('type', 'text/javascript');
+            script.setAttribute('src', _url);
+            script.setAttribute('crossorigin', 'anonymous');
+            document.body.appendChild(script);
+        },
+        loadjQuery: function(fn) {
+            if (!window.jQuery) {
+                this.loadJs({
+                    src: this.data.jqueryUrl
+                });
+            }
+            this.ckJQReady(this, function() {
+                (typeof fn === 'function') && fn();
+            });
+        },
+        ckJQReady: function(self, fn) {
+            if (window.jQuery) {
+                (typeof fn === 'function') && fn();
+            } else {
+                window.setTimeout(function() {
+                    self.ckJQReady(self, fn);
+                }, 50);
+            }
+        },
+        jQueryAjax: function(args) {
+            window.jQuery.ajax({
+                type: 'get',
+                url: args.url,
+                dataType: 'jsonp',
+                jsonp: 'callback',
+                jsonpCallback: args.jsonpCallback,
+                success: function(json) {
+                    (typeof args.fn === 'function') && args.fn(json);
+                },
+                error: function() {}
+            });
+        },
+        getCountry: function(args) {
+            var self = this;
+            this.jQueryAjax({
+                url: self.data.getCountryApi,
+                jsonpCallback: 'videoppCountryApiCallback',
+                fn: function(json) {
+                    self.data.conutryApiCallback = json;
+                    self.getCountryCallback(json);
+                }
+            });
+        },
+        getCountryCallback: function(args) {
+            if (this.ckCountryCity(this.data.vcy)) {
+                this.appendHtml();
+            }
+        },
+        appendHtml: function() {
+            var self = this,
+                template = this.template(),
+                id = 'tw_videopp_' + this.data.aid,
+                // html = [
+                //     '<div id="' + id + '" class="tw_videopp hide">' +
+                //     '<div class="main">' +
+                //     '<div class="content">' + template.html + '</div>' +
+                //     '<a class="close"><svg id="icon_close" width="16" height="16" viewBox="0 0 16 16" x="0" y="0"><path fill="#666" stroke="#fff" stroke-width="0.6487" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round" d="M8 0.432c-4.195 0-7.568 3.373-7.568 7.568s3.373 7.568 7.568 7.568 7.568-3.373 7.568-7.568-3.373-7.568-7.568-7.568z"></path><path fill="#fff" d="M3.719 3.805h2.854l1.47 2.551 1.427-2.551h2.811l-2.595 4.065 2.854 4.324h-2.897l-1.643-2.681-1.643 2.681h-2.897l2.897-4.368-2.638-4.022z"></path></svg></a>' + '</div></div>'
+                // ].join(''),
+                html = ['<div id="' + id + '">' + template.html + '</div>'].join('');;
+
+            this.data.id = id;
+
+            // window.jQuery('#container').append(html);
+            window.jQuery('#detailMain').after(html);
+
+            // this.loadCss({
+            //     src: this.data.cssHost + this.data.size + '.css'
+            // });
+
+            this.data.aid++;
+
+            // this.ckAd();
+
+            // this.bindClick();
+        },
+        template: function(args) {
+            var iframeObj = ['<div class="nlooker_m" data-src="' + this.data.adIfrSrc + '"></div><script async defer type="text/javascript" src="https://video.nowlooker.com/javascripts/loadMedia.js?ver=1"></script>'].join('');
+
+            return {
+                html: iframeObj
+            }
+        },
+        stopEvent: function(e) {
+            e = e || window.event;
+            if (e && e.stopPropagation || e && e.preventDefault) {
+                e.stopPropagation();
+                e.preventDefault();
+            } else {
+                window.event.cancelBubble = true;
+                window.event.returnValue = false;
+            }
+        },
+        bindClick: function() {
+            var self = this;
+            window.jQuery('.tw_videopp').on('click', '.close', function(e) {
+                self.stopEvent(e);
+                var $this = window.jQuery(this);
+                window.jQuery('#' + self.data.id).remove();
+            });
+        },
+        ckAd: function(args) {
+            var self = this,
+                id = this.data.id,
+                num = 0,
+                maxNum = 500,
+                ckVideo = setInterval(function() {
+                    if (window.jQuery('#' + id + ' iframe').height() > 50) {
+                        clearInterval(ckVideo);
+                        self.showAd();
+                    } else {
+                        num++;
+                        if (num > maxNum) {
+                            clearInterval(ckVideo);
+                            window.jQuery('#' + id).remove();
+                        }
+                    }
+                }, 500);
+        },
+        showAd: function() {
+            var self = this;
+            switch (self.data.vpp) {
+                case "1":
+                    // 滑到下面某個位置出來
+                    var showPopup = false;
+                    if (typeof(self.data.scrollObj) != 'undefined' && self.data.scrollObj != '') {
+                        var $obj = window.jQuery(self.data.scrollObj);
+                        if ($obj.length > 0) {
+                            var oldMethod = window.onscroll;
+                            window.onscroll = function() {
+                                (typeof oldMethod === "function") && oldMethod.call(self);
+
+                                var $this = window.jQuery(self),
+                                    offsetTop = $obj.offset().top - window.jQuery(window).height();
+
+                                if (offsetTop <= window.jQuery(window).scrollTop() && !showPopup) {
+                                    showPopup = true;
+                                    window.setTimeout(function() {
+                                        self.showAdCallback();
+                                    }, 0.3 * 1000);
+                                }
+                            };
+                        }
+                    }
+                    break;
+                case "2":
+                    // 五秒後跳出
+                    window.setTimeout(function() {
+                        self.showAdCallback();
+                    }, 5 * 1000);
+                    break;
+                case "3":
+                    // iframe家載完就跳出
+                    window.setTimeout(function() {
+                        self.showAdCallback();
+                    }, 0 * 1000);
+                    break;
+            }
+        },
+        showAdCallback: function(args) {
+            var $adObj = window.jQuery("#" + this.data.id);
+            $adObj.removeClass('hide');
+
+            if (this.data.cookieName && this.data.cookieTime && !this.data.debug) {
+                setCookie(this.data.cookieName, 1, this.data.cookieTime);
+            }
+        }
+    };
+    window.twvideopp = twvideopp;
+    twvideopp.init();
+})();
+
+function setCookie(cname, cvalue, exdays) {
+    var d = new Date();
+    d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+    var expires = "expires=" + d.toGMTString();
+    document.cookie = cname + "=" + cvalue + "; " + expires;
+}
+
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i].trim();
+        if (c.indexOf(name) == 0) return c.substring(name.length, c.length);
+    }
+    return "";
+}
